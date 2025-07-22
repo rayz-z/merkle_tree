@@ -1,12 +1,13 @@
+use ark_crypto_primitives::crh::poseidon::{Poseidon, PoseidonRoundParams};
+use ark_crypto_primitives::crh::{poseidon::CRH, TwoToOneCRH};
 use ark_ec;
-use ark_ff;
-use ark_sponge::{
-    CryptographicSponge,
-    poseidon::{self, PoseidonSponge},
-};
-use ark_std;
+use ark_ff::PrimeField;
+use ark_crypto_primitives;
+use ark_ed_on_bls12_381::Fq;
 use core::array;
 use core::cmp::PartialEq;
+use rand::prelude::*;
+use ark_sponge::poseidon::PoseidonParameters;
 
 /*
 -data structure defined tree
@@ -23,7 +24,7 @@ msgs are hashed and stored in leaf nodes
 // parent: floor((i - 2) / 2)
 struct MerkleTree {
     pub root: Node,
-    storage: [Node; 31],
+    storage: [Option<Node>; 31],
     pub index: usize, // index of last node
 }
 
@@ -38,7 +39,7 @@ struct Node {
 
 impl MerkleTree {
     pub fn new(root: Node) -> Self {
-        let storage: [Node; 31] = array::from_fn(|_| root.clone());
+        let storage: [Option<Node>; 31] = array::from_fn(|_| None);
 
         MerkleTree {
             root,
@@ -56,36 +57,52 @@ impl MerkleTree {
         };
 
         if self.index < 31 {
-            self.storage[self.index] = node;
+            self.storage[self.index] = Some(node);
             self.index += 1;
         } else {
             println!("Max nodes reached");
         }
+        // need to add conditions to update the parent and ancestor nodes
     }
+
+    fn search_for_node_at_index(self: &Self, index: usize) -> Option<Node> {
+        if index < 0 || index > 31 || index > self.index {
+            panic!("index out of bounds");
+        } else {
+            self.storage[index].clone()
+        }
+    }
+
 }
 
 // take hash of node and hash each child with the other child up the tree and compare to root node
-fn verify_node(node: Node) -> bool {
-    let phash = PoseidonSponge::new(node);
-    let witnesses: Vec<u8> = vec![];
+fn verify_node(node: Node, tree: MerkleTree) -> bool {
+    let mut r = rand::rng();
+    let params = Poseidon::<Fq, PoseidonParameters<Fq>>::setup(&mut r);
 
-    let mut index = node.index.clone() as u8;
+    let path_to_node: Vec<usize> = vec![];
+
+    let mut index = node.index.clone();
 
     while index > 0 {
         if index % 2 == 0 {
             let sibling = index - 1;
-            witnesses.push(index);
-            witnesses.push(sibling);
+            path_to_node.push(index);
+            path_to_node.push(sibling);
             index = (index - 2) / 2;
         } else {
             // check if right sibling exists
-            
+            if tree.storage[index + 1usize] != None {
+                path_to_node.push(tree.storage[index + 1].unwrap().index);
+            } else {
+                path_to_node.push(0); // hash with 0 if no right sibling, but this is only a problem if they are in the unfilled row
+            }
             index = (index - 2) / 2;
         }
     }
 
-    let mut proof_hash: u8 = witnesses[0];
-    for witness in 1..witnesses.len() {
+    let mut proof_hash: usize = path_to_node[0];
+    for witness in 1..path_to_node.len() {
         // hash
     }
 
