@@ -1,13 +1,6 @@
-use ark_crypto_primitives::crh::poseidon::{Poseidon, PoseidonRoundParams};
-use ark_crypto_primitives::crh::{poseidon::CRH, TwoToOneCRH};
-use ark_ec;
-use ark_ff::PrimeField;
-use ark_crypto_primitives;
-use ark_ed_on_bls12_381::Fq;
 use core::array;
 use core::cmp::PartialEq;
-use rand::prelude::*;
-use ark_sponge::poseidon::PoseidonParameters;
+use sha2::{Sha256, Digest};
 
 /*
 -data structure defined tree
@@ -65,7 +58,7 @@ impl MerkleTree {
         // need to add conditions to update the parent and ancestor nodes
     }
 
-    fn search_for_node_at_index(self: &Self, index: usize) -> Option<Node> {
+    fn search_for_node_at_index(self: &Self, index: usize) -> Option<Node> { // check indexing since option might return a val
         if index < 0 || index > 31 || index > self.index {
             panic!("index out of bounds");
         } else {
@@ -77,9 +70,6 @@ impl MerkleTree {
 
 // take hash of node and hash each child with the other child up the tree and compare to root node
 fn verify_node(node: Node, tree: MerkleTree) -> bool {
-    let mut r = rand::rng();
-    let params = Poseidon::<Fq, PoseidonParameters<Fq>>::setup(&mut r);
-
     let path_to_node: Vec<usize> = vec![];
 
     let mut index = node.index.clone();
@@ -101,10 +91,15 @@ fn verify_node(node: Node, tree: MerkleTree) -> bool {
         }
     }
 
-    let mut proof_hash: usize = path_to_node[0];
+    let mut hasher = Sha256::new();
+
     for witness in 1..path_to_node.len() {
         // hash
+        hasher.update(witness);
+        if hasher.finalize() != tree.storage[witness] {
+            false;
+        }
     }
 
-
+    true
 }
