@@ -1,6 +1,7 @@
 use core::array;
 use core::cmp::PartialEq;
 use sha2::{Sha256, Digest};
+use hex;
 
 /*
 -data structure defined tree
@@ -24,7 +25,7 @@ struct MerkleTree {
 #[derive(Clone)]
 #[derive(PartialEq)]
 struct Node {
-    data: u8,
+    hash: String,
     index: usize,
     left: Option<Box<Node>>,
     right: Option<Box<Node>>,
@@ -37,13 +38,17 @@ impl MerkleTree {
         MerkleTree {
             root,
             storage,
-            index: 1,
+            index: 0,
         }
     }
 
-    fn new_leaf(&mut self, hash: u8) {
+    fn new_leaf(&mut self, msg: &str) {
+        let msg = String::from(msg);
+        let hash = Sha256::digest(msg.as_bytes());
+        let hash = hex::encode(hash);
+
         let node = Node {
-            data: hash,
+            hash,
             index: self.index,
             left: None,
             right: None,
@@ -55,7 +60,12 @@ impl MerkleTree {
         } else {
             println!("Max nodes reached");
         }
+
         // need to add conditions to update the parent and ancestor nodes
+        let indexer = self.index;
+        while indexer > 0 {
+            
+        }
     }
 
     fn search_for_node_at_index(self: &Self, index: usize) -> Option<Node> { // check indexing since option might return a val
