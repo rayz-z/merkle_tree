@@ -46,13 +46,13 @@ impl Node {
 
 impl MerkleTree {
     pub fn new(root: Node) -> Self {
-        // why doesn't it error if I don't put in a node?
-        let storage: [Option<Node>; 31] = array::from_fn(|_| None);
+        let mut storage: [Option<Node>; 31] = array::from_fn(|_| None);
+        storage[0] = Some(root.clone()); // cause reference address problems with clone?
 
         MerkleTree {
             root,
             storage,
-            index: 0,
+            index: 1,
         }
     }
 
@@ -78,7 +78,7 @@ impl MerkleTree {
 
         // need to add conditions to update the parent and ancestor nodes
         let indexer = self.index;
-        while indexer > 0 {}
+        // while indexer > 0 {}
     }
 
     pub fn search_for_node_at_index(self: &Self, index: usize) -> Option<Node> {
@@ -92,7 +92,12 @@ impl MerkleTree {
     pub fn delete_node() {} // take an index and shift all others behind it up -> an array shift but also reassign parents/hashes
 
     pub fn display(self: &Self) {
-
+        for node in &self.storage {
+            if !node.is_none() {
+                let n = node.clone().unwrap().hash;
+                println!("{n}");
+            }
+        }
     }
 }
 
